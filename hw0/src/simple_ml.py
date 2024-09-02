@@ -20,7 +20,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +48,14 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    with gzip.open(image_filename, 'rb') as f:
+        img_magic, img_num, img_w, img_h = struct.unpack('>IIII', f.read(16))
+        imgs = np.frombuffer(f.read(img_num * img_h * img_w), dtype=np.uint8).reshape(img_num, img_w*img_h).astype(np.float32)/255
+			
+    with gzip.open(label_filename, 'rb') as f:
+        labels_magic, labels_num = struct.unpack('>II', f.read(8))
+        labels = np.frombuffer(f.read(labels_num), dtype=np.uint8)
+    return imgs, labels
     ### END YOUR CODE
 
 
@@ -68,7 +75,9 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    def softmax(x):
+        return np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
+    return np.mean(-np.log(softmax(Z)[np.indices(y.shape)[0], y]))
     ### END YOUR CODE
 
 
@@ -91,7 +100,18 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    total_batches = (X.shape[0] + batch - 1) // batch
+    for i in range(total_batches):
+        # batch_size * input_dim
+        X_batch = X[i*batch:(i+1)*batch]
+        # batch_size
+        y_batch = y[i*batch:(i+1)*batch]
+        E_batch = np.eye(theta.shape[1])[y_batch]
+        logits = X_batch @ theta
+        Z_batch = np.exp(logits)
+        Z_batch /= np.sum(Z_batch, axis=1, keepdims=True)
+        gradients = X_batch.T @ (Z_batch - E_batch) / batch
+        theta -= lr * gradients
     ### END YOUR CODE
 
 
@@ -118,7 +138,21 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    total_batches = (X.shape[0] + batch - 1) // batch
+    for i in range(total_batches):
+        X_batch = X[i*batch:(i+1)*batch]
+        y_batch = y[i*batch:(i+1)*batch]
+        E_batch = np.eye(W2.shape[1])[y_batch]
+        Z1_batch = np.maximum(X_batch @ W1, 0)
+        G2_batch = np.exp(Z1_batch @ W2)
+        G2_batch /= np.sum(G2_batch, axis=1, keepdims=True)
+        G2_batch -= E_batch
+        G2_batch /= batch
+        G1_batch = (Z1_batch > 0) * (G2_batch @ W2.T)
+        gradients_W1 = X_batch.T @ G1_batch
+        gradients_W2 = Z1_batch.T @ G2_batch
+        W1 -= lr * gradients_W1
+        W2 -= lr * gradients_W2
     ### END YOUR CODE
 
 

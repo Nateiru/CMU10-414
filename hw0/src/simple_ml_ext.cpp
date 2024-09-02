@@ -33,7 +33,61 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+    size_t total_batches = (m + batch - 1) / batch;
 
+    for(size_t i = 0; i < total_batches; i++) {
+        size_t start_idx = i * batch;
+        size_t end_idx = std::min(start_idx + batch, m);
+        size_t current_batch_size = end_idx - start_idx;
+
+        // Allocate memory for logits and softmax
+        float* logits = new float[current_batch_size * k]();
+        float* softmax = new float[current_batch_size * k]();
+
+        // Compute logits
+        for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
+            for(size_t class_idx = 0; class_idx < k; class_idx++) {
+                for(size_t feature_idx = 0; feature_idx < n; feature_idx++) {
+                    logits[sample_idx * k + class_idx] += X[(start_idx + sample_idx) * n + feature_idx] * theta[feature_idx * k + class_idx];
+                }
+            }
+        }
+
+        // Compute softmax
+        for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
+            float max_logit = *std::max_element(logits + sample_idx * k, logits + (sample_idx + 1) * k);
+            float sum = 0;
+            for(size_t class_idx = 0; class_idx < k; class_idx++) {
+                softmax[sample_idx * k + class_idx] = exp(logits[sample_idx * k + class_idx] - max_logit);
+                sum += softmax[sample_idx * k + class_idx];
+            }
+            for(size_t class_idx = 0; class_idx < k; class_idx++) {
+                softmax[sample_idx * k + class_idx] /= sum;
+            }
+        }
+
+        // Compute gradient
+        for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
+            for(size_t class_idx = 0; class_idx < k; class_idx++) {
+                softmax[sample_idx * k + class_idx] -= (y[start_idx + sample_idx] == class_idx);
+            }
+        }
+
+        // Update theta
+        for(size_t feature_idx = 0; feature_idx < n; feature_idx++) {
+            for(size_t class_idx = 0; class_idx < k; class_idx++) {
+                float gradient = 0;
+                for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
+                    gradient += X[(start_idx + sample_idx) * n + feature_idx] * softmax[sample_idx * k + class_idx];
+                }
+                theta[feature_idx * k + class_idx] -= lr * gradient / current_batch_size;
+            }
+        }
+
+        // Free allocated memory
+        delete[] logits;
+        delete[] softmax;
+    }
     /// END YOUR CODE
 }
 
