@@ -44,7 +44,8 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
         float* logits = new float[current_batch_size * k]();
         float* softmax = new float[current_batch_size * k]();
 
-        // Compute logits
+        // Compute logits 前向传播
+        // [batch_size, input_dim] @ [input_dim, num_classes] = [batch_size, num_classes]
         for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
             for(size_t class_idx = 0; class_idx < k; class_idx++) {
                 for(size_t feature_idx = 0; feature_idx < n; feature_idx++) {

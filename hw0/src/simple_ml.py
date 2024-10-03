@@ -2,6 +2,7 @@ import struct
 import numpy as np
 import gzip
 try:
+    # 导入动态库 .so (不需要显示写后缀)
     from simple_ml_ext import *
 except:
     pass
@@ -48,11 +49,14 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
+    # https://yann.lecun.com/exdb/mnist/ 数据集介绍
     with gzip.open(image_filename, 'rb') as f:
+        # 先从 f 中读取 16 bytes, 然后大端转化为 4 个 int32_t
         img_magic, img_num, img_w, img_h = struct.unpack('>IIII', f.read(16))
         imgs = np.frombuffer(f.read(img_num * img_h * img_w), dtype=np.uint8).reshape(img_num, img_w*img_h).astype(np.float32)/255
 			
     with gzip.open(label_filename, 'rb') as f:
+        # 先从 f 中读取 8 bytes, 然后大端转化为 2 个 int32_t
         labels_magic, labels_num = struct.unpack('>II', f.read(8))
         labels = np.frombuffer(f.read(labels_num), dtype=np.uint8)
     return imgs, labels
@@ -106,11 +110,16 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         X_batch = X[i*batch:(i+1)*batch]
         # batch_size
         y_batch = y[i*batch:(i+1)*batch]
+        # batch_size * num_classes
         E_batch = np.eye(theta.shape[1])[y_batch]
+        # [batch_size, input_dim] @ [input_dim, num_classes] = [batch_size, num_classes]
         logits = X_batch @ theta
+        # 一行是一个样本，每一列是样本的特征(num_classes) 求 softmax
         Z_batch = np.exp(logits)
         Z_batch /= np.sum(Z_batch, axis=1, keepdims=True)
+        # [batch_size, input_dim]^T @ [batch_size, num_classes] = [input_dim, num_classes]
         gradients = X_batch.T @ (Z_batch - E_batch) / batch
+        # 根据梯度下降更新参数
         theta -= lr * gradients
     ### END YOUR CODE
 
@@ -145,12 +154,15 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         E_batch = np.eye(W2.shape[1])[y_batch]
         Z1_batch = np.maximum(X_batch @ W1, 0)
         G2_batch = np.exp(Z1_batch @ W2)
+        # 前向的输出 output
         G2_batch /= np.sum(G2_batch, axis=1, keepdims=True)
+        # 和 label 比较求梯度
         G2_batch -= E_batch
         G2_batch /= batch
         G1_batch = (Z1_batch > 0) * (G2_batch @ W2.T)
         gradients_W1 = X_batch.T @ G1_batch
         gradients_W2 = Z1_batch.T @ G2_batch
+        # 更新梯度
         W1 -= lr * gradients_W1
         W2 -= lr * gradients_W2
     ### END YOUR CODE
@@ -167,6 +179,7 @@ def loss_err(h,y):
 def train_softmax(X_tr, y_tr, X_te, y_te, epochs=10, lr=0.5, batch=100,
                   cpp=False):
     """ Example function to fully train a softmax regression classifier """
+    """ 神经网络 logits = X * theta """
     theta = np.zeros((X_tr.shape[1], y_tr.max()+1), dtype=np.float32)
     print("| Epoch | Train Loss | Train Err | Test Loss | Test Err |")
     for epoch in range(epochs):
@@ -183,6 +196,7 @@ def train_softmax(X_tr, y_tr, X_te, y_te, epochs=10, lr=0.5, batch=100,
 def train_nn(X_tr, y_tr, X_te, y_te, hidden_dim = 500,
              epochs=10, lr=0.5, batch=100):
     """ Example function to train two layer neural network """
+    """ 神经网络 logits = ReLU(X * W1) * W2 """
     n, k = X_tr.shape[1], y_tr.max() + 1
     np.random.seed(0)
     W1 = np.random.randn(n, hidden_dim).astype(np.float32) / np.sqrt(hidden_dim)
@@ -190,7 +204,9 @@ def train_nn(X_tr, y_tr, X_te, y_te, hidden_dim = 500,
 
     print("| Epoch | Train Loss | Train Err | Test Loss | Test Err |")
     for epoch in range(epochs):
+        # 训练一个 epoch
         nn_epoch(X_tr, y_tr, W1, W2, lr=lr, batch=batch)
+        # 计算目前的 loss
         train_loss, train_err = loss_err(np.maximum(X_tr@W1,0)@W2, y_tr)
         test_loss, test_err = loss_err(np.maximum(X_te@W1,0)@W2, y_te)
         print("|  {:>4} |    {:.5f} |   {:.5f} |   {:.5f} |  {:.5f} |"\
