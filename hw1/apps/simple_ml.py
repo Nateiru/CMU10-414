@@ -32,9 +32,17 @@ def parse_mnist(image_filesname, label_filename):
                 labels of the examples.  Values should be of type np.int8 and
                 for MNIST will contain the values 0-9.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    # https://yann.lecun.com/exdb/mnist/ 数据集介绍
+    with gzip.open(image_filesname, 'rb') as f:
+        # 先从 f 中读取 16 bytes, 然后大端转化为 4 个 int32_t
+        img_magic, img_num, img_w, img_h = struct.unpack('>IIII', f.read(16))
+        imgs = np.frombuffer(f.read(img_num * img_h * img_w), dtype=np.uint8).reshape(img_num, img_w*img_h).astype(np.float32)/255
+			
+    with gzip.open(label_filename, 'rb') as f:
+        # 先从 f 中读取 8 bytes, 然后大端转化为 2 个 int32_t
+        labels_magic, labels_num = struct.unpack('>II', f.read(8))
+        labels = np.frombuffer(f.read(labels_num), dtype=np.uint8)
+    return imgs, labels
 
 
 def softmax_loss(Z, y_one_hot):
@@ -53,9 +61,11 @@ def softmax_loss(Z, y_one_hot):
     Returns:
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    batch_size = Z.shape[0]
+    lhs = ndl.log(ndl.exp(Z).sum(axes=(1, )))
+    rhs = (Z * y_one_hot).sum(axes=(1, ))
+    loss = (lhs - rhs).sum()
+    return loss / batch_size
 
 
 def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
@@ -81,10 +91,27 @@ def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
             W1: ndl.Tensor[np.float32]
             W2: ndl.Tensor[np.float32]
     """
+    batch_cnt = (X.shape[0] + batch - 1) // batch
+    num_classes = W2.shape[1]
+    one_hot_y = np.eye(num_classes)[y]
+    for batch_idx in range(batch_cnt):
+        start_idx = batch_idx * batch
+        end_idx = min(X.shape[0], (batch_idx+1)*batch)
+        X_batch = X[start_idx:end_idx, :]
+        y_batch = one_hot_y[start_idx:end_idx]
+        X_tensor = ndl.Tensor(X_batch)
+        y_tensor = ndl.Tensor(y_batch) 
+        first_logits = X_tensor @ W1 # type: ndl.Tensor
+        first_output = ndl.relu(first_logits) # type: ndl.Tensor
+        second_logits = first_output @ W2 # type: ndl.Tensor
+        loss_err = softmax_loss(second_logits, y_tensor) # type: ndl.Tensor
+        loss_err.backward()
+        
+        new_W1 = ndl.Tensor(W1.numpy() - lr * W1.grad.numpy())
+        new_W2 = ndl.Tensor(W2.numpy() - lr * W2.grad.numpy())
+        W1, W2 = new_W1, new_W2
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    return W1, W2
 
 
 ### CODE BELOW IS FOR ILLUSTRATION, YOU DO NOT NEED TO EDIT
