@@ -24,9 +24,12 @@ class SGD(Optimizer):
         self.weight_decay = weight_decay
 
     def step(self):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        for param in self.params:
+            if param.grad is not None:
+                if param not in self.u:
+                    self.u[param] = ndl.zeros_like(param.grad, requires_grad=False)
+                self.u[param] = self.momentum * self.u[param].data + (1 - self.momentum) * (param.grad.data + self.weight_decay * param.data)
+                param.data = param.data - self.lr * self.u[param]
 
     def clip_grad_norm(self, max_norm=0.25):
         """
@@ -59,6 +62,32 @@ class Adam(Optimizer):
         self.v = {}
 
     def step(self):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        self.t += 1
+        for param in self.params:
+            if param.grad is not None:
+                if param not in self.m.keys():
+                    self.m[param] = ndl.zeros_like(param.grad, requires_grad=False)
+                if param not in self.v.keys():
+                    self.v[param] = ndl.zeros_like(param.grad, requires_grad=False)
+                grad = param.grad.data + self.weight_decay * param.data
+                self.m[param] = self.beta1 * self.m[param] + (1 - self.beta1) * grad.data
+                self.v[param] = self.beta2 * self.v[param] + (1 - self.beta2) * grad.data * grad.data
+                u_hat = self.m[param].data / (1 - self.beta1 ** self.t)
+                v_hat = self.v[param].data / (1 - self.beta2 ** self.t)
+                param.data = param.data - self.lr * u_hat.data / (ndl.ops.power_scalar(v_hat.data, 0.5) + self.eps).data
+
+    # def step(self):
+    #     self.t += 1
+    #     for param in self.params:
+    #         # grad 这里加了一个惩罚项
+    #         grad_with_penalty = param.grad.detach() + self.weight_decay * param.detach()
+    #         # 将 dtype 从 float64 转换为 float32
+    #         grad_with_penalty = ndl.Tensor(grad_with_penalty, dtype=param.dtype)
+
+    #         m = self.beta1 * self.m.get(id(param), 0) + (1 - self.beta1) * grad_with_penalty
+    #         v = self.beta2 * self.v.get(id(param), 0) + (1 - self.beta2) * grad_with_penalty ** 2
+    #         self.m[id(param)] = m.detach()
+    #         self.v[id(param)] = v.detach()
+    #         m_hat = m / (1 - self.beta1 ** self.t)
+    #         v_hat = v / (1 - self.beta2 ** self.t)
+    #         param.data -= self.lr * m_hat / (v_hat ** 0.5 + self.eps)

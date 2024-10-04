@@ -16,6 +16,7 @@ import numpy as array_api
 
 class EWiseAdd(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
+        assert a.shape == b.shape , "The shape of lhs {} and rhs {} should be the same".format(a.shape, b.shape)
         return a + b
 
     def gradient(self, out_grad: Tensor, node: Tensor):
@@ -43,6 +44,7 @@ def add_scalar(a, scalar):
 
 class EWiseMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
+        assert a.shape == b.shape, "The shape of two tensors should be the same"
         return a * b
 
     def gradient(self, out_grad: Tensor, node: Tensor):
@@ -76,7 +78,7 @@ class PowerScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray) -> NDArray:
-        return array_api.power(a, self.scalar)
+        return array_api.power(a, self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad, node):
         a = node.inputs[0]
@@ -92,6 +94,7 @@ class EWisePow(TensorOp):
     """Op to element-wise raise a tensor to a power."""
 
     def compute(self, a: NDArray, b: NDArray) -> NDArray:
+        assert a.shape == b.shape, "The shape of two tensors should be the same"
         return a**b
 
     def gradient(self, out_grad, node):
@@ -129,7 +132,7 @@ class DivScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a):
-        return array_api.true_divide(a, self.scalar)
+        return array_api.true_divide(a, self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad, node):
         return out_grad/self.scalar
@@ -163,6 +166,7 @@ class Reshape(TensorOp):
         self.shape = shape
 
     def compute(self, a):
+        assert array_api.prod(self.shape) == array_api.prod(a.shape), "The reshape size is not compatible"
         return array_api.reshape(a, self.shape)
 
     def gradient(self, out_grad, node):
@@ -178,14 +182,20 @@ class BroadcastTo(TensorOp):
         self.shape = shape
 
     def compute(self, a):
+        assert len(self.shape) >= len(a.shape), \
+            "The target shape's dimension count {} should be greater than \
+                or equal to the input shape's dimension count {}".format(len(self.shape), len(a.shape))
+        for i in range(len(a.shape)):
+            assert a.shape[-1 - i] == self.shape[-1 - i] or a.shape[-1 - i] == 1, \
+                "The input shape {} is not compatible with the target shape {}".format(a.shape, self.shape)
         return array_api.broadcast_to(a, self.shape)
 
     def gradient(self, out_grad, node):
         input_shape = node.inputs[0].shape
         ret = summation(out_grad, tuple(range(len(out_grad.shape) - len(input_shape))))
         for i, dim in enumerate(input_shape):
-            if dim == 1:
-              ret = summation(ret, axes=(i,))
+            if input_shape[-1 - i] == 1 and self.shape[-1 - i] != 1:
+                ret = summation(ret, (len(input_shape) - 1 - i,))
         return reshape(ret, input_shape)
 
 
