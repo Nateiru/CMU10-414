@@ -246,9 +246,9 @@ class NDArray:
             NDArray : reshaped array; this will point to thep
         """
 
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        assert prod(self.shape) == prod(new_shape), "Product of shapes must be equal"
+        assert self.is_compact(), "Matrix must be compact"
+        return self.as_strided(new_shape, NDArray.compact_strides(new_shape))
 
     def permute(self, new_axes):
         """
@@ -271,9 +271,15 @@ class NDArray:
             strides changed).
         """
 
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        new_shape = tuple(self.shape[i] for i in new_axes)
+        new_strides = tuple(self.strides[i] for i in new_axes)
+        return NDArray.make(
+            shape=new_shape,
+            strides=new_strides,
+            device=self.device,
+            handle=self._handle,
+            offset=self._offset,
+        )
 
     def broadcast_to(self, new_shape):
         """
@@ -294,10 +300,27 @@ class NDArray:
             NDArray: the new NDArray object with the new broadcast shape; should
             point to the same memory as the original array.
         """
-
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        assert (len(new_shape) == len(self.shape))
+        new_stride = np.array(self.strides)
+        for i in range(len(self.shape)):
+            if self.shape[i] != new_shape[i]:
+                if self.shape[i] != 1:
+                    raise AssertionError
+                else:
+                    new_stride[i] = 0
+        return NDArray.make(
+            tuple(new_shape), tuple(
+                new_stride), self.device, self._handle, self._offset
+            )
+        # assert all(
+        #     new_shape[i] == self.shape[i] or self.shape[i] == 1
+        #     for i in range(len(self.shape))
+        # ), "Invalid broadcast shape"
+        # new_strides = tuple(
+        #     self.strides[i] if self.shape[i] == new_shape[i] else 0
+        #     for i in range(len(self.shape))
+        # )
+        # return self.compact().as_strided(new_shape, new_strides)
 
     ### Get and set elements
 
@@ -362,9 +385,14 @@ class NDArray:
         )
         assert len(idxs) == self.ndim, "Need indexes equal to number of dimensions"
 
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        shape = tuple(max(0, (s.stop - s.start + s.step - 1) // s.step) for s in idxs)
+        strides = tuple(s.step * self.strides[i] for i, s in enumerate(idxs))
+        offset = reduce(
+            operator.add, (s.start * self.strides[i] for i, s in enumerate(idxs))
+        )
+        return NDArray.make(
+            shape, strides, device=self.device, handle=self._handle, offset=offset
+        )
 
     def __setitem__(self, idxs, other):
         """Set the values of a view into an array, using the same semantics
@@ -397,7 +425,7 @@ class NDArray:
         """
         out = NDArray.make(self.shape, device=self.device)
         if isinstance(other, NDArray):
-            assert self.shape == other.shape, "operation needs two equal-sized arrays"
+            assert self.shape == other.shape, f"operation needs two equal-sized arrays: [{self.shape}] not equal [{other.shape}]"
             ewise_func(self.compact()._handle, other.compact()._handle, out._handle)
         else:
             scalar_func(self.compact()._handle, other, out._handle)
@@ -538,8 +566,8 @@ class NDArray:
 
         if axis is None:
             view = self.compact().reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
-            #out = NDArray.make((1,) * self.ndim, device=self.device)
-            out = NDArray.make((1,), device=self.device)
+            out = NDArray.make(
+                (1,) * (self.ndim if keepdims else 1), device=self.device)
 
         else:
             if isinstance(axis, (tuple, list)):
@@ -558,13 +586,29 @@ class NDArray:
         return view, out
 
     def sum(self, axis=None, keepdims=False):
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
-        self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
+        if isinstance(axis, int):
+            view, out = self.reduce_view_out(axis, keepdims=keepdims)
+            self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
+        elif isinstance(axis, (tuple, list)):
+            for axis_ in axis:
+                view, out = self.reduce_view_out(axis_, keepdims=keepdims)
+                self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
+        else:
+            view, out = self.reduce_view_out(axis, keepdims=keepdims)
+            self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
     def max(self, axis=None, keepdims=False):
-        view, out = self.reduce_view_out(axis, keepdims=keepdims)
-        self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        if isinstance(axis, int):
+            view, out = self.reduce_view_out(axis, keepdims=keepdims)
+            self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        elif isinstance(axis, (tuple, list)):
+            for axis_ in axis:
+                view, out = self.reduce_view_out(axis_, keepdims=keepdims)
+                self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        else:
+            view, out = self.reduce_view_out(axis, keepdims=keepdims)
+            self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
     def flip(self, axes):

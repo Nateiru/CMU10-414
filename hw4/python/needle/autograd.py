@@ -359,9 +359,12 @@ class Tensor(Value):
     def transpose(self, axes=None):
         return needle.ops.Transpose(axes)(self)
 
+    def __rsub__(self, other):
+        return needle.ops.AddScalar(other)(needle.ops.Negate()(self))
+
     __radd__ = __add__
     __rmul__ = __mul__
-    __rsub__ = __sub__
+    # __rsub__ = __sub__
     __rmatmul__ = __matmul__
 
 
@@ -380,10 +383,13 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
-
+    for node in reverse_topo_order:
+        node.grad = sum_node_list(node_to_output_grads_list[node])
+        if not node.is_leaf():
+            gradients = node.op.gradient_as_tuple(node.grad, node)
+            for i, son_node in enumerate(node.inputs):
+                node_to_output_grads_list.setdefault(son_node, [])
+                node_to_output_grads_list[son_node].append(gradients[i])
 
 def find_topo_sort(node_list: List[Value]) -> List[Value]:
     """Given a list of nodes, return a topological sort list of nodes ending in them.
@@ -393,16 +399,22 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     after all its predecessors are traversed due to post-order DFS, we get a topological
     sort.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    visited = dict()
+    topo_order = []
+    for node in node_list:
+        if not visited.get(node, False):
+            topo_sort_dfs(node, visited, topo_order)
+    return topo_order
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    sons = node.inputs
+    for son in sons:
+        if not visited.get(son, False):
+            topo_sort_dfs(son, visited, topo_order)
+    visited[node] = True
+    topo_order.append(node)
 
 
 ##############################
