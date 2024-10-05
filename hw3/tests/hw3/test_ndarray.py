@@ -1,3 +1,11 @@
+import os
+
+os.environ["PYTHONPATH"] = "./python"
+os.environ["NEEDLE_BACKEND"] = "nd"
+import sys
+
+sys.path.append("./python")
+
 import numpy as np
 import pytest
 import mugrade

@@ -1,11 +1,19 @@
 cmake_minimum_required(VERSION 3.5)
 project(needle C CXX)
-cmake_policy(SET CMP0146 OLD)
+
+if(POLICY CMP0146)
+    cmake_policy(SET CMP0146 OLD)
+endif()
 
 # find correct version of Python
 execute_process(COMMAND python3-config --prefix
   OUTPUT_VARIABLE Python_ROOT_DIR)
-find_package(Python COMPONENTS Development Interpreter REQUIRED)
+
+message(STATUS "Python_ROOT_DIR: ${Python_ROOT_DIR}")
+message(STATUS "Python_INCLUDE_DIRS: ${Python_INCLUDE_DIRS}")
+message(STATUS "Python_LIBRARY: ${Python_LIBRARY}")
+message(STATUS "Python_DEFAULT_EXECUTABLE: ${Python_DEFAULT_EXECUTABLE}")
+# find_package(Python COMPONENTS Development Interpreter REQUIRED)
 include_directories(${Python_INCLUDE_DIRS})
 
 # find pybind

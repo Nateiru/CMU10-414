@@ -21,7 +21,7 @@ class Dataset:
 
     def __len__(self) -> int:
         raise NotImplementedError
-    
+
     def apply_transforms(self, x):
         if self.transforms is not None:
             # apply the transforms
@@ -40,7 +40,7 @@ class DataLoader:
             (default: ``1``).
         shuffle (bool, optional): set to ``True`` to have the data reshuffled
             at every epoch (default: ``False``).
-     """
+    """
     dataset: Dataset
     batch_size: Optional[int]
 
@@ -50,13 +50,13 @@ class DataLoader:
         batch_size: Optional[int] = 1,
         shuffle: bool = False,
     ):
-
         self.dataset = dataset
         self.shuffle = shuffle
         self.batch_size = batch_size
         if not self.shuffle:
-            self.ordering = np.array_split(np.arange(len(dataset)), 
-                                           range(batch_size, len(dataset), batch_size))
+            self.ordering = np.array_split(
+                np.arange(len(dataset)), range(batch_size, len(dataset), batch_size)
+            )
 
     def __iter__(self):
         ### BEGIN YOUR SOLUTION
@@ -68,4 +68,3 @@ class DataLoader:
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
