@@ -75,19 +75,3 @@ class Adam(Optimizer):
                 u_hat = self.m[param].data / (1 - self.beta1 ** self.t)
                 v_hat = self.v[param].data / (1 - self.beta2 ** self.t)
                 param.data = param.data - self.lr * u_hat.data / (ndl.ops.power_scalar(v_hat.data, 0.5) + self.eps).data
-
-    # def step(self):
-    #     self.t += 1
-    #     for param in self.params:
-    #         # grad 这里加了一个惩罚项
-    #         grad_with_penalty = param.grad.detach() + self.weight_decay * param.detach()
-    #         # 将 dtype 从 float64 转换为 float32
-    #         grad_with_penalty = ndl.Tensor(grad_with_penalty, dtype=param.dtype)
-
-    #         m = self.beta1 * self.m.get(id(param), 0) + (1 - self.beta1) * grad_with_penalty
-    #         v = self.beta2 * self.v.get(id(param), 0) + (1 - self.beta2) * grad_with_penalty ** 2
-    #         self.m[id(param)] = m.detach()
-    #         self.v[id(param)] = v.detach()
-    #         m_hat = m / (1 - self.beta1 ** self.t)
-    #         v_hat = v / (1 - self.beta2 ** self.t)
-    #         param.data -= self.lr * m_hat / (v_hat ** 0.5 + self.eps)
