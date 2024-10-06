@@ -110,7 +110,24 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    all_acc, all_loss, num_sample = 0.0, 0.0, 0
+    # 设置模式
+    if opt:
+        model.train()
+    else:
+        model.eval()
+    # 开始训练
+    for X, y in dataloader:
+        y_hat = model(X)
+        loss = loss_fn(y_hat, y)
+        if opt:
+            opt.reset_grad()
+            loss.backward()
+            opt.step()
+        all_acc += (y_hat.numpy().argmax(axis=1) == y.numpy()).sum()
+        all_loss += loss.numpy() * y.shape[0]
+        num_sample += y.shape[0]
+    return all_acc / num_sample, all_loss / num_sample
     ### END YOUR SOLUTION
 
 
@@ -134,7 +151,10 @@ def train_cifar10(model, dataloader, n_epochs=1, optimizer=ndl.optim.Adam,
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    opt = optimizer(model.parameters(), lr, weight_decay=weight_decay)
+    for i in range(n_epochs):
+        aa, al = epoch_general_cifar10(dataloader, model, loss_fn(), opt)
+    return aa, al
     ### END YOUR SOLUTION
 
 
@@ -153,7 +173,9 @@ def evaluate_cifar10(model, dataloader, loss_fn=nn.SoftmaxLoss):
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    return epoch_general_cifar10(
+        dataloader, model, loss_fn(), None
+        )
     ### END YOUR SOLUTION
 
 

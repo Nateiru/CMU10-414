@@ -6,18 +6,39 @@ import math
 import numpy as np
 np.random.seed(0)
 
+class ConvBN(ndl.nn.Module):
+    def __init__(self, a, b, k, s, device=None, dtype="float32"):
+        self.conv = nn.Conv(a, b, k, s, device=device, dtype=dtype)
+        self.bn = nn.BatchNorm2d(dim=b, device=device, dtype=dtype)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
+
+
+def ResidualBlock(in_channels, out_channels, kernel_size, stride, device=None):
+    main_path = nn.Sequential(ConvBN(in_channels, out_channels, kernel_size, stride, device),
+                              ConvBN(in_channels, out_channels, kernel_size, stride, device))
+    return nn.Residual(main_path)
+
 
 class ResNet9(ndl.nn.Module):
     def __init__(self, device=None, dtype="float32"):
         super().__init__()
-        ### BEGIN YOUR SOLUTION ###
-        raise NotImplementedError() ###
-        ### END YOUR SOLUTION
+        self.model = nn.Sequential(ConvBN(3, 16, 7, 4, device=device),
+                                   ConvBN(16, 32, 3, 2, device=device),
+                                   ResidualBlock(32, 32, 3, 1, device=device),
+                                   ConvBN(32, 64, 3, 2, device=device),
+                                   ConvBN(64, 128, 3, 2, device=device),
+                                   ResidualBlock(128, 128, 3, 1,
+                                                 device=device),
+                                   nn.Flatten(),
+                                   nn.Linear(128, 128, device=device),
+                                   nn.ReLU(),
+                                   nn.Linear(128, 10, device=device))
 
     def forward(self, x):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        return self.model(x)
 
 
 class LanguageModel(nn.Module):

@@ -586,29 +586,16 @@ class NDArray:
         return view, out
 
     def sum(self, axis=None, keepdims=False):
-        if isinstance(axis, int):
-            view, out = self.reduce_view_out(axis, keepdims=keepdims)
-            self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
-        elif isinstance(axis, (tuple, list)):
-            for axis_ in axis:
-                view, out = self.reduce_view_out(axis_, keepdims=keepdims)
-                self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
-        else:
-            view, out = self.reduce_view_out(axis, keepdims=keepdims)
-            self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
+        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+
+        self.device.reduce_sum(view.compact()._handle,
+                               out._handle, view.shape[-1])
         return out
 
     def max(self, axis=None, keepdims=False):
-        if isinstance(axis, int):
-            view, out = self.reduce_view_out(axis, keepdims=keepdims)
-            self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
-        elif isinstance(axis, (tuple, list)):
-            for axis_ in axis:
-                view, out = self.reduce_view_out(axis_, keepdims=keepdims)
-                self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
-        else:
-            view, out = self.reduce_view_out(axis, keepdims=keepdims)
-            self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
+        view, out = self.reduce_view_out(axis, keepdims=keepdims)
+        self.device.reduce_max(view.compact()._handle,
+                               out._handle, view.shape[-1])
         return out
 
     def flip(self, axes):
@@ -616,9 +603,16 @@ class NDArray:
         Flip this ndarray along the specified axes.
         Note: compact() before returning.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        if axes is None:
+            axes = range(len(self.shape))
+        new_stride = list(self.strides)
+        new_offset = 0
+        for i in axes:
+            new_offset += (self.shape[i] - 1) * new_stride[i]
+            new_stride[i] *= -1
+        ret = NDArray.make(self.shape, tuple(new_stride),
+                           self.device, self._handle, new_offset)
+        return ret.compact()
 
     def pad(self, axes):
         """
@@ -626,9 +620,18 @@ class NDArray:
         which lists for _all_ axes the left and right padding amount, e.g.,
         axes = ( (0, 0), (1, 1), (0, 0)) pads the middle axis with a 0 on the left and right side.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        # 先构造出pad之后的对象
+        new_shape = list(self.shape)
+        for i, ax in enumerate(axes):
+            new_shape[i] += ax[0] + ax[1]
+        ret = NDArray.make(new_shape, device=self.device)
+        ret.fill(0)
+        # 将当前ndarray的值赋给pad之后的对象
+        slices = []
+        for i, ax in enumerate(axes):
+            slices.append(slice(ax[0], ax[0] + self.shape[i]))
+        ret[tuple(slices)] = self  # 重载了setitem函数
+        return ret
 
 def array(a, dtype="float32", device=None):
     """Convenience methods to match numpy a bit more closely."""
