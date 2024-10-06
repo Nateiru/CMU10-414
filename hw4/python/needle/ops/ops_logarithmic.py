@@ -29,8 +29,6 @@ class LogSumExp(TensorOp):
 
     def compute(self, Z):
         max_z = Z.max(axis=self.axes, keepdims=True)
-        print(f"max_z shape: {max_z.shape}")
-        print(f"Z shape: {Z.shape}")
         z_exp_minus = array_api.exp(Z - max_z.broadcast_to(Z.shape))
         z_sum = array_api.sum(z_exp_minus, axis=self.axes)
         z_log = array_api.log(z_sum)

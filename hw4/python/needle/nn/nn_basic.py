@@ -133,7 +133,7 @@ class Sequential(Module):
 class SoftmaxLoss(Module):
     def forward(self, logits: Tensor, y: Tensor):
         batch_size, label_size = logits.shape
-        one_hot_y = init.one_hot(label_size, y)
+        one_hot_y = init.one_hot(label_size, y, device=logits.device)
         true_logits = ops.summation(logits * one_hot_y, axes=(1,))
         return (ops.logsumexp(logits, axes=(1, )) - true_logits).sum()/batch_size
 

@@ -169,7 +169,7 @@ class Reshape(TensorOp):
 
     def compute(self, a):
         assert array_api.prod(self.shape) == array_api.prod(a.shape), "The reshape size is not compatible"
-        return array_api.reshape(a, self.shape)
+        return a.compact().reshape(self.shape)
 
     def gradient(self, out_grad, node):
         return reshape(out_grad, node.inputs[0].shape)
@@ -246,12 +246,15 @@ class MatMul(TensorOp):
         return a@b
 
     def gradient(self, out_grad, node):
-        a, b = node.inputs
-        adjoint1 = out_grad @ transpose(b)
-        adjoint2 = transpose(a) @ out_grad
-        adjoint1 = summation(adjoint1, axes=tuple(range(len(adjoint1.shape) - len(a.shape))))
-        adjoint2 = summation(adjoint2, axes=tuple(range(len(adjoint2.shape) - len(b.shape))))
-        return adjoint1, adjoint2
+        a, b = node.inputs[0], node.inputs[1]
+        grad_a = matmul(out_grad, transpose(b))
+        grad_b = matmul(transpose(a), out_grad)
+
+        if grad_a.shape != a.shape:
+            grad_a = summation(grad_a, axes=tuple(range(len(grad_a.shape) - len(a.shape))))
+        if grad_b.shape != b.shape:
+            grad_b = summation(grad_b, axes=tuple(range(len(grad_b.shape) - len(b.shape))))
+        return grad_a, grad_b
 
 
 def matmul(a, b):
@@ -299,7 +302,7 @@ class ReLU(TensorOp):
         return array_api.maximum(a, 0)
 
     def gradient(self, out_grad, node):
-        relu_mask = Tensor(node.inputs[0].cached_data > 0)
+        relu_mask = Tensor(node.inputs[0].cached_data > 0, device=out_grad.device)
         return out_grad * relu_mask
 
 
