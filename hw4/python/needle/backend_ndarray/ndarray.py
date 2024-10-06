@@ -300,27 +300,15 @@ class NDArray:
             NDArray: the new NDArray object with the new broadcast shape; should
             point to the same memory as the original array.
         """
-        assert (len(new_shape) == len(self.shape))
-        new_stride = np.array(self.strides)
-        for i in range(len(self.shape)):
-            if self.shape[i] != new_shape[i]:
-                if self.shape[i] != 1:
-                    raise AssertionError
-                else:
-                    new_stride[i] = 0
-        return NDArray.make(
-            tuple(new_shape), tuple(
-                new_stride), self.device, self._handle, self._offset
-            )
-        # assert all(
-        #     new_shape[i] == self.shape[i] or self.shape[i] == 1
-        #     for i in range(len(self.shape))
-        # ), "Invalid broadcast shape"
-        # new_strides = tuple(
-        #     self.strides[i] if self.shape[i] == new_shape[i] else 0
-        #     for i in range(len(self.shape))
-        # )
-        # return self.compact().as_strided(new_shape, new_strides)
+        assert all(
+            new_shape[i] == self.shape[i] or self.shape[i] == 1
+            for i in range(len(self.shape))
+        ), "Invalid broadcast shape"
+        new_strides = tuple(
+            self.strides[i] if self.shape[i] == new_shape[i] else 0
+            for i in range(len(self.shape))
+        )
+        return self.compact().as_strided(new_shape, new_strides)
 
     ### Get and set elements
 

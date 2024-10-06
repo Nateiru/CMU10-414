@@ -190,7 +190,9 @@ class BroadcastTo(TensorOp):
         for i in range(len(a.shape)):
             assert a.shape[-1 - i] == self.shape[-1 - i] or a.shape[-1 - i] == 1, \
                 "The input shape {} is not compatible with the target shape {}".format(a.shape, self.shape)
-        return a.broadcast_to(self.shape)
+        if len(a.shape) < len(self.shape):
+            a = a.reshape(tuple((len(self.shape) - len(a.shape)) * [1] + list(a.shape)))
+        return a.broadcast_to(self.shape).compact()
 
     def gradient(self, out_grad, node):
         input_shape = node.inputs[0].shape
