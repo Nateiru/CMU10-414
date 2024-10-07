@@ -190,6 +190,7 @@ class BroadcastTo(TensorOp):
         for i in range(len(a.shape)):
             assert a.shape[-1 - i] == self.shape[-1 - i] or a.shape[-1 - i] == 1, \
                 "The input shape {} is not compatible with the target shape {}".format(a.shape, self.shape)
+        # 广播机制会从最后一个维度开始向前对齐，并在较短的数组形状前面补充1，直到两个数组的维度数相同。
         if len(a.shape) < len(self.shape):
             a = a.reshape(tuple((len(self.shape) - len(a.shape)) * [1] + list(a.shape)))
         return a.broadcast_to(self.shape).compact()
@@ -209,10 +210,17 @@ def broadcast_to(a, shape):
 
 
 class Summation(TensorOp):
+    """
+    输入 shape 是 (3, 2, 4, 5) 
+    对 axes (0, 2) 进行求和
+    前向: 得到的输出结果是 (2, 5)
+    反向: 先把 (2, 5) 变成 (1, 2, 1, 5) 然后进行广播 
+    """
     def __init__(self, axes: Optional[tuple] = None):
         self.axes = axes
 
     def compute(self, a):
+        # 这里并没有 keepdims 维度会减小
         if isinstance(self.axes, (list, tuple)) and len(self.axes) > 1:
             # multiple axes case
             for axis in reversed(sorted(self.axes)):
@@ -232,6 +240,7 @@ class Summation(TensorOp):
         else:
             raise ValueError(
                 "Unsupported axes type, must be int, tuple or None!")
+        # axes 是前向的时候 reduce 的 dimension
         for axis in axes:
             new_shape[axis] = 1
         return out_grad.reshape(new_shape).broadcast_to(node.inputs[0].shape)

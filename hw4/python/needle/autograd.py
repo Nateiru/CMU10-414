@@ -75,7 +75,7 @@ class Op:
 
 class TensorOp(Op):
     """Op class specialized to output tensors, will be alternate subclasses for other structures"""
-
+    # args 的类型是 Tuple
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
 
@@ -234,12 +234,14 @@ class Tensor(Value):
         return array_api.array(numpy_array, device=device, dtype=dtype)
 
     @staticmethod
-    def make_from_op(op: Op, inputs: List["Value"]):
+    def make_from_op(op: Op, inputs: List["Value"]): # inputs 的类型标注 ❌ 正确应该是 Tuple
         tensor = Tensor.__new__(Tensor)
         tensor._init(op, inputs)
+        # 不使用 lazy init
         if not LAZY_MODE:
             if not tensor.requires_grad:
                 return tensor.detach()
+            # 需要梯度立即进行初始化
             tensor.realize_cached_data()
         return tensor
 

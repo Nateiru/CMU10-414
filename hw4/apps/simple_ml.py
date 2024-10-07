@@ -36,9 +36,17 @@ def parse_mnist(image_filesname, label_filename):
                 labels of the examples.  Values should be of type np.int8 and
                 for MNIST will contain the values 0-9.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    # https://yann.lecun.com/exdb/mnist/ 数据集介绍
+    with gzip.open(image_filesname, 'rb') as f:
+        # 先从 f 中读取 16 bytes, 然后大端转化为 4 个 int32_t
+        img_magic, img_num, img_w, img_h = struct.unpack('>IIII', f.read(16))
+        imgs = np.frombuffer(f.read(img_num * img_h * img_w), dtype=np.uint8).reshape(img_num, img_w*img_h).astype(np.float32)/255
+			
+    with gzip.open(label_filename, 'rb') as f:
+        # 先从 f 中读取 8 bytes, 然后大端转化为 2 个 int32_t
+        labels_magic, labels_num = struct.unpack('>II', f.read(8))
+        labels = np.frombuffer(f.read(labels_num), dtype=np.uint8)
+    return imgs, labels
 
 
 def softmax_loss(Z, y_one_hot):
@@ -57,9 +65,11 @@ def softmax_loss(Z, y_one_hot):
     Returns:
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    batch_size = Z.shape[0]
+    lhs = ndl.log(ndl.exp(Z).sum(axes=(1, )))
+    rhs = (Z * y_one_hot).sum(axes=(1, ))
+    loss = (lhs - rhs).sum()
+    return loss / batch_size
 
 
 def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
@@ -86,9 +96,25 @@ def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
             W2: ndl.Tensor[np.float32]
     """
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    for i in range(0, len(X), batch):
+        start, end = i, min(i+batch, len(X))
+        X_batch = ndl.Tensor(X[start:end])
+        y_batch = ndl.Tensor(y[start:end])
+        y_one_hot = np.eye(W2.shape[1])[y_batch.cached_data]
+
+        # 1.前向传播 
+        z1 = ndl.relu(ndl.matmul(X_batch, W1))
+        z2 = ndl.matmul(z1, W2)
+        loss = softmax_loss(z2, y_one_hot)
+        # 2.反向传播
+        loss.backward()
+        # 3. 更新梯度, 使用 NumPy 计算，再转为 Tensor 
+        W1 = W1.numpy() - lr * W1.grad.numpy()
+        W2 = W2.numpy() - lr * W2.grad.numpy()
+        W1, W2 = ndl.Tensor(W1), ndl.Tensor(W2)
+
+    return W1, W2
+
 
 ### CIFAR-10 training ###
 def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None):
