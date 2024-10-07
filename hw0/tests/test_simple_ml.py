@@ -86,6 +86,7 @@ def test_softmax_regression_epoch():
     X = np.random.randn(50,5).astype(np.float32)
     y = np.random.randint(3, size=(50,)).astype(np.uint8)
     Theta = np.zeros((5,3), dtype=np.float32)
+    # 使用 numdifftools 求梯度 即每个参数 Theta 的偏导数
     dTheta = -nd.Gradient(lambda Th : softmax_loss(X@Th.reshape(5,3),y))(Theta)
     softmax_regression_epoch(X,y,Theta,lr=1.0,batch=50)
     np.testing.assert_allclose(dTheta.reshape(5,3), Theta, rtol=1e-4, atol=1e-4)

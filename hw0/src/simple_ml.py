@@ -79,7 +79,11 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
+    # softmax loss 损失 = softmax + 交叉熵
     def softmax(x):
+        # np.exp(x): batch_size * num_classes
+		# np.sum() : batch_size * 1
+		# dimension 不同进行相除法会自动 broadcasting 
         return np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
     return np.mean(-np.log(softmax(Z)[np.indices(y.shape)[0], y]))
     ### END YOUR CODE
@@ -104,22 +108,27 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
+    # 1. 前向传播得到预估值 logits
+    # 2. 反向传播计算梯度
+    # 3. 根据梯度下降更新参数
     total_batches = (X.shape[0] + batch - 1) // batch
     for i in range(total_batches):
         # batch_size * input_dim
         X_batch = X[i*batch:(i+1)*batch]
         # batch_size
         y_batch = y[i*batch:(i+1)*batch]
-        # batch_size * num_classes
-        E_batch = np.eye(theta.shape[1])[y_batch]
+        # 1. 前向传播得到预估值 logits
         # [batch_size, input_dim] @ [input_dim, num_classes] = [batch_size, num_classes]
         logits = X_batch @ theta
+        # 2. 反向传播计算梯度
+        # batch_size * num_classes
+        E_batch = np.eye(theta.shape[1])[y_batch]
         # 一行是一个样本，每一列是样本的特征(num_classes) 求 softmax
         Z_batch = np.exp(logits)
         Z_batch /= np.sum(Z_batch, axis=1, keepdims=True)
         # [batch_size, input_dim]^T @ [batch_size, num_classes] = [input_dim, num_classes]
         gradients = X_batch.T @ (Z_batch - E_batch) / batch
-        # 根据梯度下降更新参数
+        # 3. 根据梯度下降更新参数
         theta -= lr * gradients
     ### END YOUR CODE
 
@@ -152,9 +161,9 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         X_batch = X[i*batch:(i+1)*batch]
         y_batch = y[i*batch:(i+1)*batch]
         E_batch = np.eye(W2.shape[1])[y_batch]
-        Z1_batch = np.maximum(X_batch @ W1, 0)
-        G2_batch = np.exp(Z1_batch @ W2)
+        Z1_batch = np.maximum(X_batch @ W1, 0)  # ReLU(X W1)
         # 前向的输出 output
+        G2_batch = np.exp(Z1_batch @ W2)
         G2_batch /= np.sum(G2_batch, axis=1, keepdims=True)
         # 和 label 比较求梯度
         G2_batch -= E_batch

@@ -37,6 +37,7 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
 
     for(size_t i = 0; i < total_batches; i++) {
         size_t start_idx = i * batch;
+        // 分开考虑完整的 batch 和最后一轮不完整的 batch
         size_t end_idx = std::min(start_idx + batch, m);
         size_t current_batch_size = end_idx - start_idx;
 
@@ -45,7 +46,9 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
         float* softmax = new float[current_batch_size * k]();
 
         // Compute logits 前向传播
-        // [batch_size, input_dim] @ [input_dim, num_classes] = [batch_size, num_classes]
+        // Y = X @ W
+        // [batch_size, num_classes] = [batch_size, input_dim] @ [input_dim, num_classes]
+        // [-1, k] = [-1, n] * [n, k]
         for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
             for(size_t class_idx = 0; class_idx < k; class_idx++) {
                 for(size_t feature_idx = 0; feature_idx < n; feature_idx++) {
@@ -55,6 +58,7 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
         }
 
         // Compute softmax
+        // softmax = [-1, k]
         for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
             float max_logit = *std::max_element(logits + sample_idx * k, logits + (sample_idx + 1) * k);
             float sum = 0;
@@ -68,6 +72,8 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
         }
 
         // Compute gradient
+        // 无需类似 py 的写法 E_batch = np.eye(theta.shape[1])[y_batch]
+        // 直接 for 循环计算即可
         for(size_t sample_idx = 0; sample_idx < current_batch_size; sample_idx++) {
             for(size_t class_idx = 0; class_idx < k; class_idx++) {
                 softmax[sample_idx * k + class_idx] -= (y[start_idx + sample_idx] == class_idx);
@@ -75,6 +81,7 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
         }
 
         // Update theta
+        // gradients = X_batch.T @ (Z_batch - E_batch) / batch
         for(size_t feature_idx = 0; feature_idx < n; feature_idx++) {
             for(size_t class_idx = 0; class_idx < k; class_idx++) {
                 float gradient = 0;
