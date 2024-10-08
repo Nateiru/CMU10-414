@@ -24,18 +24,16 @@ class Dictionary(object):
         and appends to the list of words.
         Returns the word's unique ID.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        if self.word2idx.get(word) is None:
+            self.word2idx[word] = len(self.idx2word)
+            self.idx2word.append(word)
+        return self.word2idx[word]
 
     def __len__(self):
         """
         Returns the number of unique words in the dictionary.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
+        return len(self.idx2word)
 
 
 class Corpus(object):
@@ -59,9 +57,17 @@ class Corpus(object):
         Output:
         ids: List of ids
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        with open(path, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+        ids = []
+        for i, line in enumerate(all_lines):
+            if i == max_lines:
+                break
+            words = line.strip().split(' ')
+            for word in words:
+                ids.append(self.dictionary.add_word(word))
+            ids.append(self.dictionary.add_word('<eos>'))
+        return ids
 
 
 def batchify(data, batch_size, device, dtype):
@@ -80,9 +86,12 @@ def batchify(data, batch_size, device, dtype):
     If the data cannot be evenly divided by the batch size, trim off the remainder.
     Returns the data as a numpy array of shape (nbatch, batch_size).
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    # 修剪data的不能整除部分
+    data_len = len(data)
+    nbatch = data_len // batch_size
+    data = data[:nbatch * batch_size]
+    # 改变形状。要用到转置操作，所以必须得是numpy类型的数组
+    return np.array(data).reshape(batch_size, -1).T
 
 
 def get_batch(batches, i, bptt, device=None, dtype=None):
@@ -104,6 +113,13 @@ def get_batch(batches, i, bptt, device=None, dtype=None):
     data - Tensor of shape (bptt, bs) with cached data as NDArray
     target - Tensor of shape (bptt*bs,) with cached data as NDArray
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    # 确保不越界
+    if i + bptt + 1 > len(batches):
+        bptt = len(batches) - 1 - i
+    # 取出对应的数据
+    data = batches[i:i + bptt]
+    target = batches[i + 1:i + bptt + 1]
+    # 构造tensor
+    data = Tensor(data, device=device, dtype=dtype)
+    target = Tensor(target.reshape(-1), device=device, dtype=dtype)
+    return data, target
