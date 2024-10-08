@@ -274,9 +274,8 @@ class Embedding(Module):
         weight - The learnable weights of shape (num_embeddings, embedding_dim)
             initialized from N(0, 1).
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        self.weight = Parameter(init.randn(
+            num_embeddings, embedding_dim, device=device, dtype=dtype))
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -288,6 +287,8 @@ class Embedding(Module):
         Output:
         output of shape (seq_len, bs, embedding_dim)
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        one_hot = init.one_hot(self.weight.shape[0], x, device=x.device, dtype=x.dtype)
+        seq_len, bs, num_embeddings = one_hot.shape
+        one_hot = one_hot.reshape((seq_len*bs, num_embeddings))
+        
+        return ops.matmul(one_hot, self.weight).reshape((seq_len, bs, self.weight.shape[1]))
