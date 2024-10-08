@@ -13,9 +13,8 @@ class Sigmoid(Module):
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        return init.ones_like(x, device=x.device) / (1 + ops.exp(-x))
+
 
 class RNNCell(Module):
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
@@ -37,9 +36,19 @@ class RNNCell(Module):
         Weights and biases are initialized from U(-sqrt(k), sqrt(k)) where k = 1/hidden_size
         """
         super().__init__()
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        bound = 1 / np.sqrt(hidden_size)
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.W_ih = Parameter(init.rand(
+            input_size, hidden_size, low=-bound, high=bound, device=device, requires_grad=True))
+        self.W_hh = Parameter(init.rand(
+            hidden_size, hidden_size, low=-bound, high=bound, device=device, requires_grad=True))
+        self.bias_ih = Parameter(init.rand(
+            hidden_size, low=-bound, high=bound, device=device, dtype=dtype)) if bias else None
+        self.bias_hh = Parameter(init.rand(
+            hidden_size, low=-bound, high=bound, device=device, dtype=dtype)) if bias else None
+        self.nonlinearity = ops.tanh if nonlinearity == 'tanh' else ops.relu
+
 
     def forward(self, X, h=None):
         """
@@ -52,9 +61,15 @@ class RNNCell(Module):
         h' of shape (bs, hidden_size): Tensor contianing the next hidden state
             for each element in the batch.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        if h is None:
+            h = init.zeros(X.shape[0], self.W_hh.shape[0], device=X.device, dtype=X.dtype)
+        Z = X@self.W_ih + h@self.W_hh
+        if self.bias_ih:
+            bias = self.bias_ih + self.bias_hh
+            bias = bias.reshape((1, bias.shape[0]))
+            bias = bias.broadcast_to(Z.shape)
+            Z += bias
+        return self.nonlinearity(Z)
 
 
 class RNN(Module):
@@ -81,9 +96,11 @@ class RNN(Module):
             of shape (hidden_size,).
         """
         super().__init__()
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        self.rnn_cells = []
+        self.rnn_cells.append(RNNCell(input_size, hidden_size, bias, nonlinearity, device, dtype))
+        for _ in range(1, num_layers):
+            self.rnn_cells.append(RNNCell(hidden_size, hidden_size, bias, nonlinearity, device, dtype))
+        self.hidden_size = hidden_size
 
     def forward(self, X, h0=None):
         """
@@ -97,9 +114,18 @@ class RNN(Module):
             (h_t) from the last layer of the RNN, for each t.
         h_n of shape (num_layers, bs, hidden_size) containing the final hidden state for each element in the batch.
         """
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        seq_len, bs, input_size = X.shape
+        layer_num = len(self.rnn_cells)
+        if h0 is None:
+            h0 = init.zeros(layer_num, bs, self.hidden_size, device=X.device, dtype=X.dtype)
+        h_input = list(ops.split(h0, axis=0)) # each layer has one h_n
+        X_input = list(ops.split(X, axis=0))
+        
+        for i in range(seq_len):
+            for j in range(layer_num):
+                X_input[i] = self.rnn_cells[j](X_input[i], h_input[j])
+                h_input[j] = X_input[i] 
+        return ops.stack(X_input, axis=0), ops.stack(h_input, axis=0)
 
 
 class LSTMCell(Module):
@@ -121,9 +147,12 @@ class LSTMCell(Module):
         Weights and biases are initialized from U(-sqrt(k), sqrt(k)) where k = 1/hidden_size
         """
         super().__init__()
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
+        # bound = 1.0 / np.sqrt(hidden_size)
+        # self.W_ih = Parameter(init.rand(input_size, 4*hidden_size, low=-bound, high=bound, device=device, dtype=dtype))
+        # self.W_hh = Parameter(init.rand(hidden_size, 4*hidden_size, low=-bound, high=bound, device=device, dtype=dtype))
+        # self.bias_ih = Parameter(init.rand(4*hidden_size, low=-bound, high=bound, device=device, dtype=dtype)) if bias else None
+        # self.bias_hh = Parameter(init.rand(4*hidden_size, low=-bound, high=bound, device=device, dtype=dtype)) if bias else None
+        # self.sigmoid = Sigmoid()
 
 
     def forward(self, X, h=None):
