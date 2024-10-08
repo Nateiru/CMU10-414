@@ -129,6 +129,7 @@ class NDArray:
         """Utility function to compute compact strides"""
         stride = 1
         res = []
+        # 最后一维内存排布紧凑 从最后一维开始计算 stride
         for i in range(1, len(shape) + 1):
             res.append(stride)
             stride *= shape[-i]
@@ -378,6 +379,7 @@ class NDArray:
 
         shape = tuple(max(0, (s.stop - s.start + s.step - 1) // s.step) for s in idxs)
         strides = tuple(s.step * self.strides[i] for i, s in enumerate(idxs))
+        # offset 发生改变
         offset = reduce(
             operator.add, (s.start * self.strides[i] for i, s in enumerate(idxs))
         )
