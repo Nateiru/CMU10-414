@@ -87,13 +87,17 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.weight = init.kaiming_uniform(in_features, out_features, device=device, dtype=dtype)
-        self.weight = Parameter(self.weight, device=device, dtype=dtype)
-        self.bias = None
-        if bias:
-            self.bias = init.kaiming_uniform(out_features, 1, device=device, dtype=dtype)
-            self.bias = self.bias.transpose()
-            self.bias = Parameter(self.bias, device=device, dtype=dtype)
+        self.weight = Parameter(
+            init.kaiming_uniform(in_features, out_features, device=device, dtype=dtype),
+            device=device,
+            dtype=dtype
+        )
+
+        self.bias = Parameter(
+            init.kaiming_uniform(out_features, 1, device=device, dtype=dtype).transpose(),
+            device=device,
+            dtype=dtype
+        ) if bias else None
 
     def forward(self, X: Tensor) -> Tensor:
         if self.bias.shape != (1, self.out_features):
@@ -105,6 +109,9 @@ class Linear(Module):
 
 
 class Flatten(Module):
+    """
+    保留第一个维度为 batchsize 展平剩下维度
+    """
     def forward(self, X):
         assert len(X.shape) >= 2
         elem_cnt = 1
@@ -136,6 +143,7 @@ class SoftmaxLoss(Module):
         one_hot_y = init.one_hot(label_size, y, device=logits.device)
         true_logits = ops.summation(logits * one_hot_y, axes=(1,))
         return (ops.logsumexp(logits, axes=(1, )) - true_logits).sum()/batch_size
+
 
 class BatchNorm1d(Module):
     def __init__(self, dim, eps=1e-5, momentum=0.1, device=None, dtype="float32"):
@@ -172,12 +180,16 @@ class LayerNorm1d(Module):
         super().__init__()
         self.dim = dim
         self.eps = eps
-        self.weight = Parameter(init.ones(1, dim, device=device, dtype=dtype), device=device, dtype=dtype)
-        self.bias = Parameter(init.zeros(1, dim, device=device, dtype=dtype), device=device, dtype=dtype)
+        self.weight = Parameter(
+            init.ones(1, dim, device=device, dtype=dtype), device=device, dtype=dtype)
+        self.bias = Parameter(
+            init.zeros(1, dim, device=device, dtype=dtype), device=device, dtype=dtype)
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size, feature_size = x.shape
+        # 对 feature 维度求平均值 reshape -> (batch_size, feature_size)
         mean = (x.sum(axes=(1, )) / feature_size).reshape((batch_size, 1)).broadcast_to(x.shape)
+        # 对 feature 维度求方差 reshape -> (batch_size, feature_size)
         var = (((x - mean) ** 2).sum(axes=(1, )) / feature_size).reshape((batch_size, 1)).broadcast_to(x.shape)
         std_x = (x - mean) / ops.power_scalar(var + self.eps, 0.5)
         weight = self.weight.broadcast_to(x.shape)
@@ -193,7 +205,7 @@ class Dropout(Module):
     def forward(self, x: Tensor) -> Tensor:
         if not self.training:
             return x
-        mask = init.randb(*x.shape, p=1 - self.p)
+        mask = init.randb(*x.shape, p = 1 - self.p)
         return x * mask / (1 - self.p)
 
 

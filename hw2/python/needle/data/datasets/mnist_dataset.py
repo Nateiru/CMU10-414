@@ -25,6 +25,7 @@ class MNISTDataset(Dataset):
         self.X, self.y = parse_mnist(image_filename, label_filename)
 
     def __getitem__(self, index) -> object:
+        # 对一个样本进行 transform
         x = self.apply_transforms(self.X[index].reshape(28, 28, -1))
         return x.reshape(-1, 28*28), self.y[index]
 

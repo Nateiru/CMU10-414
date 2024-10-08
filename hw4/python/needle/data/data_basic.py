@@ -59,6 +59,7 @@ class DataLoader:
                                            range(batch_size, len(dataset), batch_size))
 
     def __iter__(self):
+        # 保证每一次迭代都会进行 shuffle
         if self.shuffle:
             self.ordering = np.array_split(np.random.permutation(len(self.dataset)), 
                                            range(self.batch_size, len(self.dataset), self.batch_size))

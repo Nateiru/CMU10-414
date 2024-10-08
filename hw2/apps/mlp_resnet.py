@@ -79,6 +79,7 @@ def train_mnist(
     np.random.seed(4)
     train_dataset = ndl.data.MNISTDataset(data_dir+"/train-images-idx3-ubyte.gz", data_dir+"/train-labels-idx1-ubyte.gz")
     test_dataset = ndl.data.MNISTDataset(data_dir+"/t10k-images-idx3-ubyte.gz", data_dir+"/t10k-labels-idx1-ubyte.gz")
+    # 训练的过程需要 shuffle
     train_dataloader = ndl.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = ndl.data.DataLoader(test_dataset, batch_size=batch_size)
     model = MLPResNet(784, hidden_dim)

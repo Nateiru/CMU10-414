@@ -16,6 +16,7 @@ class BackendDevice:
 
     def __init__(self, name, mod):
         self.name = name
+        # 不同的 backend 的 dynamic library 赋值给 mod 变量
         self.mod = mod
 
     def __eq__(self, other):
@@ -25,6 +26,7 @@ class BackendDevice:
         return self.name + "()"
 
     def __getattr__(self, name):
+        # 通过该魔术方法调用不同 backend 实现的算子
         return getattr(self.mod, name)
 
     def enabled(self):
@@ -120,7 +122,7 @@ class NDArray:
         self._strides = other._strides
         self._offset = other._offset
         self._device = other._device
-        self._handle = other._handle
+        self._handle = other._handle    # 实际存储数据 分配在不同的 device 上
 
     @staticmethod
     def compact_strides(shape):
@@ -142,6 +144,7 @@ class NDArray:
         array._strides = NDArray.compact_strides(shape) if strides is None else strides
         array._offset = offset
         array._device = device if device is not None else default_device()
+        # 通过 device 调用不同 backend 的 Arrary 的构造函数
         if handle is None:
             array._handle = array.device.Array(prod(shape))
         else:

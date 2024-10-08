@@ -20,6 +20,7 @@ class SGD(Optimizer):
         super().__init__(params)
         self.lr = lr
         self.momentum = momentum
+        # 状态变量 0 初始化
         self.u = {}
         self.weight_decay = weight_decay
 
